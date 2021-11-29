@@ -11,9 +11,7 @@ for FILE in {Cards,Trays,Other}/*; do
     --printer-technology FFF \
     --center 125,105 \
     --export-gcode --loglevel 0 \
-    --load "Original Prusa i3 MK3S - Copy.ini" \
-    --load "Prusament PLA - Copy.ini" \
-    --load "0.30mm DRAFT @MK3 - Slow 1st layer.ini" \
+    --load "PrusaSlicer_config_bundle.ini" \
     --output output/$NAME.gcode \
     $FILE
 done
