@@ -45,6 +45,20 @@ def pairs(a):
 def ints(n):
   return [i for i in range(0, n)]
 
+# creates a continuous polygon and adds coincident constraints
+def wireUpVerts( sketch, verts ):
+  geoList = []
+  for a, b in pairs(verts):
+    geoList.append( Part.LineSegment(a,b) )
+
+  sketch.addGeometry(geoList,False)
+  conList = []
+  for a, b in pairs(ints(len(verts))):
+    conList.append( Sketcher.Constraint('Coincident', a, 2, b, 1))
+
+  sketch.addConstraint(conList)
+
+
 def makeCopies( original, sketch, name ):
   transform = body.newObject('PartDesign::MultiTransform', name)
   transform.Originals = [original]
@@ -92,19 +106,9 @@ verts = [
   App.Vector(-vertX, -vertY, 0)
 ]
 
-geoList = []
-
-# wire up all the pairs
-for a, b in pairs(verts):
-  geoList.append( Part.LineSegment(a,b) )
-
-structure_sketch.addGeometry(geoList,False)
+wireUpVerts( structure_sketch, verts )
 
 conList = []
-
-# make sure the points are all connected
-for a, b in pairs(ints(len(verts))):
-  conList.append( Sketcher.Constraint('Coincident', a, 2, b, 1))
 
 conList.append(Sketcher.Constraint('Horizontal',2))
 conList.append(Sketcher.Constraint('Vertical',3))
@@ -116,7 +120,7 @@ conList.append(Sketcher.Constraint( 'Symmetric', 0, 1, 0, 2, -2 ))
 conList.append(Sketcher.Constraint( 'Symmetric', 1, 1, 1, 2, -1 ))
 
 structure_sketch.addConstraint(conList)
-del geoList, conList
+del conList, verts
 
 # pocket!
 structure_pad = body.newObject('PartDesign::Pad','MainStructure')
@@ -139,12 +143,12 @@ zone_sketch.Support = box_plane
 zone_sketch.MapMode = 'FlatFace'
 
 vertX = App.Units.Quantity( f'{baseX}/2 mm' )
-vertXshort = App.Units.Quantity( f'{baseX}/2 - 10 mm' )
-vertXinset = App.Units.Quantity( f'{baseX}/2 - 3 mm' )
+vertXshort = App.Units.Quantity( f'{baseX}/2 - 15 mm' )
+vertXinset = App.Units.Quantity( f'{baseX}/2 - 4 mm' )
 
 vertY = App.Units.Quantity( f'{baseY}/2 mm' )
-vertYshort = App.Units.Quantity( f'{baseY}/2 - 10 mm' )
-vertYinset = App.Units.Quantity( f'{baseY}/2 - 3 mm' )
+vertYshort = App.Units.Quantity( f'{baseY}/2 - 15 mm' )
+vertYinset = App.Units.Quantity( f'{baseY}/2 - 4 mm' )
 
 ############## general shape
 #    .____
@@ -165,22 +169,11 @@ verts = [
   App.Vector( -vertX,       vertYshort, 0 )
 ]
 
-geoList = []
-# wire up all the pairs
-for a, b in pairs(verts):
-  geoList.append( Part.LineSegment(a,b) )
-
-zone_sketch.addGeometry(geoList,False)
+wireUpVerts( zone_sketch, verts )
 
 conList = []
 
-# make sure all the points are connected
-for a, b in pairs(ints(len(verts))):
-  conList.append( Sketcher.Constraint('Coincident', a, 2, b, 1))
-
-# conList.append(Sketcher.Constraint('Horizontal',0))
 conList.append(Sketcher.Constraint('Horizontal',4))
-# conList.append(Sketcher.Constraint('Vertical',2))
 conList.append(Sketcher.Constraint('Vertical',6))
 
 conList.append(Sketcher.Constraint( 'DistanceX', 0, 1, 0, 2, 2*vertXshort ))
@@ -198,18 +191,18 @@ conList.append(Sketcher.Constraint('Equal', 0, 4))
 conList.append(Sketcher.Constraint('Equal', 2, 6))
 
 zone_sketch.addConstraint(conList)
-del geoList, conList
+del verts, conList
 
 # # but wait, there's more! (circles in the corners)
-zone_sketch.addGeometry( Part.Circle( App.Vector( -vertXinset,  vertYinset, 0), App.Vector(0,0,1), 2.5 ), False)
-zone_sketch.addGeometry( Part.Circle( App.Vector(  vertXinset,  vertYinset, 0), App.Vector(0,0,1), 2.5 ), False)
-zone_sketch.addGeometry( Part.Circle( App.Vector(  vertXinset, -vertYinset, 0), App.Vector(0,0,1), 2.5 ), False)
-zone_sketch.addGeometry( Part.Circle( App.Vector( -vertXinset, -vertYinset, 0), App.Vector(0,0,1), 2.5 ), False)
+zone_sketch.addGeometry( Part.Circle( App.Vector( -vertXinset,  vertYinset, 0), App.Vector(0,0,1), 3 ), False)
+zone_sketch.addGeometry( Part.Circle( App.Vector(  vertXinset,  vertYinset, 0), App.Vector(0,0,1), 3 ), False)
+zone_sketch.addGeometry( Part.Circle( App.Vector(  vertXinset, -vertYinset, 0), App.Vector(0,0,1), 3 ), False)
+zone_sketch.addGeometry( Part.Circle( App.Vector( -vertXinset, -vertYinset, 0), App.Vector(0,0,1), 3 ), False)
 
-zone_sketch.addConstraint(Sketcher.Constraint('Radius', 8, 2.5))
-zone_sketch.addConstraint(Sketcher.Constraint('Radius', 9, 2.5))
-zone_sketch.addConstraint(Sketcher.Constraint('Radius',10, 2.5))
-zone_sketch.addConstraint(Sketcher.Constraint('Radius',11, 2.5))
+zone_sketch.addConstraint(Sketcher.Constraint('Radius', 8, 3))
+zone_sketch.addConstraint(Sketcher.Constraint('Radius', 9, 3))
+zone_sketch.addConstraint(Sketcher.Constraint('Radius',10, 3))
+zone_sketch.addConstraint(Sketcher.Constraint('Radius',11, 3))
 
 # pocket!
 zone_sketch.AttachmentOffset = corner_offset_placement
@@ -240,18 +233,9 @@ verts = [
   App.Vector( -vertX, -vertY, 0 )
 ]
 
-geoList = []
-# wire up all the pairs
-for a, b in pairs(verts):
-  geoList.append( Part.LineSegment(a,b) )
-
-zone_fill_sketch.addGeometry(geoList,False)
+wireUpVerts( zone_fill_sketch, verts )
 
 conList = []
-
-# make sure all the points are connected
-for a, b in pairs(ints(len(verts))):
-  conList.append( Sketcher.Constraint('Coincident', a, 2, b, 1))
 
 conList.append(Sketcher.Constraint( 'DistanceX', 0, 1, 0, 2, 2*vertX ))
 conList.append(Sketcher.Constraint( 'DistanceY', 1, 2, 1, 1, 2*vertY ))
@@ -263,7 +247,7 @@ conList.append(Sketcher.Constraint('Equal', 0, 2))
 conList.append(Sketcher.Constraint('Equal', 1, 3))
 
 zone_fill_sketch.addConstraint(conList)
-del geoList, conList
+del verts, conList
 
 # pocket!
 zone_fill_sketch.AttachmentOffset = corner_offset_placement
@@ -275,6 +259,6 @@ fill_pocket.Reversed = 1
 fill_pocket.ReferenceAxis = (zone_fill_sketch, ['N_Axis'])
 zone_fill_sketch.Visibility = False
 
-makeCopies( fill_pocket, zone_fill_sketch, 'CenterFillTransform' )
+transform = makeCopies( fill_pocket, zone_fill_sketch, 'CenterFillTransform' )
 
 doc.recompute()
