@@ -16,21 +16,49 @@ import Show
 # import Sketcher
 import PartDesignGui
 
+from collections import namedtuple
+from math import tan, sqrt, radians
+
 # get document above?
 
 # add part
 doc = App.newDocument('GeneratedBox')
 
-# some general variables
-baseX = 60
-baseY = 50
-baseZ = 75
 
-xCount = 2
-yCount = 3
+# setting up a custom vector-ish type
+Dimension = namedtuple( 'Dimension', 'x y z')
+
+##################
+#  1____________
+#  | 2________ |
+#  | |       | |
+#  | |_______| |
+#  | ____*____ |
+#  | |       | |
+#  | 3_______| |
+#  4___________|
+#
+# ____ or | for inner box is size
+#
+# 1 -> offset (assuming * as center)
+# 2 -> inset (assuming * as center)
+# 1 to 4 -> base
+# 2 to 3 -> repeatLength
+#
+##############
+
+size = Dimension( 60, 50, 75 )
+count = Dimension( 6, 4, 1 )
+padding = 2 # this is dimensionless
+
+base = Dimension._make( [c*length + (c + 1)*padding for length, c in zip( size, count ) ] )
+offset = Dimension._make( [length/2 for length in size] )
+globalOffset = Dimension._make( [length/2 for length in base] )
+inset = Dimension._make( [length/2-padding for length in size] )
+repeatLength = Dimension._make( [length-2*padding for length in base] )
 
 zero_vector = App.Vector( 0, 0, 0 )
-corner_offset_vector = App.Vector( baseX*(xCount-1)/2 + 1, baseY*(yCount-1)/2 + 1, 0 )
+corner_offset_vector = App.Vector( globalOffset.x, globalOffset.y, 0 )
 corner_offset_placement = App.Placement( corner_offset_vector, zero_vector, 0 )
 
 doc.Tip = doc.addObject('App::Part','Part')
@@ -38,7 +66,10 @@ doc.Part.Label = 'Scaffolding'
 Gui.activateView('Gui::View3DInventor', True)
 Gui.activeView().setActiveObject('part', doc.Part)
 
+####################
 ### helper stuff ###
+####################
+
 def pairs(a):
   return zip(a, (a[1:] + a[:1]))
 
@@ -66,15 +97,15 @@ def makeCopies( original, sketch, name ):
 
   x_transform = body.newObject('PartDesign::LinearPattern', name+'X')
   x_transform.Direction = ( sketch, ['H_Axis'] )
-  x_transform.Length = baseX*(xCount-1) + xCount # small padding?
+  x_transform.Length = repeatLength.x
   x_transform.Reversed = 1
-  x_transform.Occurrences = xCount
+  x_transform.Occurrences = count.x
 
   y_transform = body.newObject('PartDesign::LinearPattern', name+'Y')
   y_transform.Direction = ( sketch, ['V_Axis'] )
-  y_transform.Length = baseY*(yCount-1) + yCount # small padding?
+  y_transform.Length = repeatLength.y
   y_transform.Reversed = 1
-  y_transform.Occurrences = yCount
+  y_transform.Occurrences = count.y
 
   # "install" the transformations
   transform.Transformations = [x_transform, y_transform]
@@ -83,21 +114,25 @@ def makeCopies( original, sketch, name ):
 
   return transform
 
+############
+### BODY ###
+############
 
-# add body
 body = doc.addObject('PartDesign::Body','Scaffolding-2x3')
 
-# ???
 Gui.Selection.addSelection(body)
 part = doc.Part.addObject(body)
 
-### make a sketch for the main structure ###
+################
+### MAIN PAD ###
+################
+
 structure_sketch = body.newObject('Sketcher::SketchObject','StructureSketch')
 structure_sketch.Support = (doc.getObject('XY_Plane001'),[''])
 structure_sketch.MapMode = 'FlatFace'
 
-vertX = App.Units.Quantity( f'{baseX+2}*{xCount}/2 mm' )
-vertY = App.Units.Quantity( f'{baseY+2}*{yCount}/2 mm' )
+vertX = App.Units.Quantity( f'{base.x} mm' )
+vertY = App.Units.Quantity( f'{base.y} mm' )
 
 verts = [
   App.Vector(-vertX,  vertY, 0),
@@ -106,8 +141,10 @@ verts = [
   App.Vector(-vertX, -vertY, 0)
 ]
 
+### draw ###
 wireUpVerts( structure_sketch, verts )
 
+### constraints ###
 conList = []
 
 conList.append(Sketcher.Constraint('Horizontal',2))
@@ -122,33 +159,40 @@ conList.append(Sketcher.Constraint( 'Symmetric', 1, 1, 1, 2, -1 ))
 structure_sketch.addConstraint(conList)
 del conList, verts
 
-# pocket!
+### pocket ###
 structure_pad = body.newObject('PartDesign::Pad','MainStructure')
 structure_pad.Profile = structure_sketch
-structure_pad.Length = baseZ
+structure_pad.Length = base.z
 structure_pad.ReferenceAxis = (structure_sketch, ['N_Axis'])
 structure_sketch.Visibility = False
 
-### dataum plane ###
+
+###################
+### DATUM PLANE ###
+###################
 
 box_plane = body.newObject('PartDesign::Plane', 'DatumPlane')
 box_plane.Support = structure_pad
 box_plane.MapMode = 'ObjectXY'
 box_plane.Visibility = False
 
-### make the individual zones
+######################
+### OCTOGON POCKET ###
+######################
 
 zone_sketch = body.newObject('Sketcher::SketchObject','ZoneSketch')
 zone_sketch.Support = box_plane
 zone_sketch.MapMode = 'FlatFace'
 
-vertX = App.Units.Quantity( f'{baseX}/2 mm' )
-vertXshort = App.Units.Quantity( f'{baseX}/2 - 15 mm' )
-vertXinset = App.Units.Quantity( f'{baseX}/2 - 4 mm' )
+shortSize = 15
 
-vertY = App.Units.Quantity( f'{baseY}/2 mm' )
-vertYshort = App.Units.Quantity( f'{baseY}/2 - 15 mm' )
-vertYinset = App.Units.Quantity( f'{baseY}/2 - 4 mm' )
+vertX = App.Units.Quantity( f'{inset.x} mm' )
+vertXshort = App.Units.Quantity( f'{inset.x} - {shortSize} mm' )
+vertXcenter = App.Units.Quantity( f'{inset.x} - (1/sqrt(2))*{shortSize} * tan(radians(22.5))')
+
+vertY = App.Units.Quantity( f'{inset.y} mm' )
+vertYshort = App.Units.Quantity( f'{inset.y} - 15 mm' )
+vertYcenter = App.Units.Quantity( f'{inset.y} - (1/sqrt(2))*{shortSize} * tan(radians(22.5))')
 
 ############## general shape
 #    .____
@@ -169,8 +213,10 @@ verts = [
   App.Vector( -vertX,       vertYshort, 0 )
 ]
 
+### draw octogon ###
 wireUpVerts( zone_sketch, verts )
 
+### constraints ###
 conList = []
 
 conList.append(Sketcher.Constraint('Horizontal',4))
@@ -193,38 +239,41 @@ conList.append(Sketcher.Constraint('Equal', 2, 6))
 zone_sketch.addConstraint(conList)
 del verts, conList
 
-# # but wait, there's more! (circles in the corners)
+### draw circles ###
 zone_sketch.addGeometry( Part.Circle( App.Vector( -vertXinset,  vertYinset, 0), App.Vector(0,0,1), 3 ), False)
 zone_sketch.addGeometry( Part.Circle( App.Vector(  vertXinset,  vertYinset, 0), App.Vector(0,0,1), 3 ), False)
 zone_sketch.addGeometry( Part.Circle( App.Vector(  vertXinset, -vertYinset, 0), App.Vector(0,0,1), 3 ), False)
 zone_sketch.addGeometry( Part.Circle( App.Vector( -vertXinset, -vertYinset, 0), App.Vector(0,0,1), 3 ), False)
 
+### circle constaints ###
 zone_sketch.addConstraint(Sketcher.Constraint('Radius', 8, 3))
 zone_sketch.addConstraint(Sketcher.Constraint('Radius', 9, 3))
 zone_sketch.addConstraint(Sketcher.Constraint('Radius',10, 3))
 zone_sketch.addConstraint(Sketcher.Constraint('Radius',11, 3))
 
-# pocket!
+### pocket ###
 zone_sketch.AttachmentOffset = corner_offset_placement
 
 center_pocket = body.newObject('PartDesign::Pocket','CenterPocket')
 center_pocket.Profile = zone_sketch
-center_pocket.Length = baseZ
+center_pocket.Length = base.z
 center_pocket.Reversed = 1
 center_pocket.ReferenceAxis = (zone_sketch, ['N_Axis'])
 zone_sketch.Visibility = False
 
-# making copies
+### copies ###
 makeCopies( center_pocket, zone_sketch, 'CenterPocketTransform' )
 
-# remaining cavity
+#####################
+### SQUARE POCKET ###
+#####################
 
 zone_fill_sketch = body.newObject('Sketcher::SketchObject','ZoneFillSketch')
 zone_fill_sketch.Support = box_plane
 zone_fill_sketch.MapMode = 'FlatFace'
 
-vertX = App.Units.Quantity( f'{baseX}/2 mm' )
-vertY = App.Units.Quantity( f'{baseY}/2 mm' )
+vertX = App.Units.Quantity( f'{size.x}/2 mm' )
+vertY = App.Units.Quantity( f'{size.y}/2 mm' )
 
 verts = [
   App.Vector( -vertX,  vertY, 0 ),
@@ -233,8 +282,10 @@ verts = [
   App.Vector( -vertX, -vertY, 0 )
 ]
 
+### draw ###
 wireUpVerts( zone_fill_sketch, verts )
 
+### constraints ###
 conList = []
 
 conList.append(Sketcher.Constraint( 'DistanceX', 0, 1, 0, 2, 2*vertX ))
@@ -249,16 +300,18 @@ conList.append(Sketcher.Constraint('Equal', 1, 3))
 zone_fill_sketch.addConstraint(conList)
 del verts, conList
 
-# pocket!
+### pocket ###
 zone_fill_sketch.AttachmentOffset = corner_offset_placement
 
 fill_pocket = body.newObject('PartDesign::Pocket','CenterFillPocket')
 fill_pocket.Profile = zone_fill_sketch
-fill_pocket.Length = baseZ - 2
+fill_pocket.Length = base.z - padding
 fill_pocket.Reversed = 1
 fill_pocket.ReferenceAxis = (zone_fill_sketch, ['N_Axis'])
 zone_fill_sketch.Visibility = False
 
+### copies ###
 transform = makeCopies( fill_pocket, zone_fill_sketch, 'CenterFillTransform' )
 
 doc.recompute()
+Gui.Selection.addSelection(transform)
