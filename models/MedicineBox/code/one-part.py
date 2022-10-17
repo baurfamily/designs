@@ -51,15 +51,17 @@ size = Dimension( 60, 50, 75 )
 count = Dimension( 6, 4, 1 )
 padding = 2 # this is dimensionless
 
-base = Dimension._make( [c*length + (c + 1)*padding for length, c in zip( size, count ) ] )
-offset = Dimension._make( [length/2 for length in size] )
-globalOffset = Dimension._make( [length/2 for length in base] )
-inset = Dimension._make( [length/2-padding for length in size] )
-repeatLength = Dimension._make( [length-2*padding for length in base] )
+base = Dimension._make( [c*s + (c + 1)*padding for s, c in zip( size, count ) ] )
+offset = Dimension._make( [s/2 for s in size] )
+globalOffset = Dimension._make( [(b-s-padding)/2 for s, b in zip(size, base)] )
+repeatLength = Dimension._make( [b-s for s, b in zip(size, base)] )
 
+# setting up some standard vectors
 zero_vector = App.Vector( 0, 0, 0 )
 corner_offset_vector = App.Vector( globalOffset.x, globalOffset.y, 0 )
 corner_offset_placement = App.Placement( corner_offset_vector, zero_vector, 0 )
+
+### document setup ###
 
 doc.Tip = doc.addObject('App::Part','Part')
 doc.Part.Label = 'Scaffolding'
@@ -131,8 +133,8 @@ structure_sketch = body.newObject('Sketcher::SketchObject','StructureSketch')
 structure_sketch.Support = (doc.getObject('XY_Plane001'),[''])
 structure_sketch.MapMode = 'FlatFace'
 
-vertX = App.Units.Quantity( f'{base.x} mm' )
-vertY = App.Units.Quantity( f'{base.y} mm' )
+vertX = App.Units.Quantity( f'{base.x}/2 mm' )
+vertY = App.Units.Quantity( f'{base.y}/2 mm' )
 
 verts = [
   App.Vector(-vertX,  vertY, 0),
@@ -184,16 +186,6 @@ zone_sketch = body.newObject('Sketcher::SketchObject','ZoneSketch')
 zone_sketch.Support = box_plane
 zone_sketch.MapMode = 'FlatFace'
 
-shortSize = 15
-
-vertX = App.Units.Quantity( f'{inset.x} mm' )
-vertXshort = App.Units.Quantity( f'{inset.x} - {shortSize} mm' )
-vertXcenter = App.Units.Quantity( f'{inset.x} - (1/sqrt(2))*{shortSize} * tan(radians(22.5))')
-
-vertY = App.Units.Quantity( f'{inset.y} mm' )
-vertYshort = App.Units.Quantity( f'{inset.y} - 15 mm' )
-vertYcenter = App.Units.Quantity( f'{inset.y} - (1/sqrt(2))*{shortSize} * tan(radians(22.5))')
-
 ############## general shape
 #    .____
 #   /      \
@@ -201,6 +193,16 @@ vertYcenter = App.Units.Quantity( f'{inset.y} - (1/sqrt(2))*{shortSize} * tan(ra
 #  |        |
 #   \______/
 # dot is first vertext in list
+
+shortSize = 15
+
+vertX = App.Units.Quantity( f'{offset.x} mm' )
+vertXshort = App.Units.Quantity( f'({offset.x} - {shortSize}) mm' )
+vertXcenter = App.Units.Quantity( f'({offset.x} - (1/sqrt(2))*{shortSize} * tan(radians(22.5)))/2 mm')
+
+vertY = App.Units.Quantity( f'{offset.y} mm' )
+vertYshort = App.Units.Quantity( f'({offset.y} - {shortSize}) mm' )
+vertYcenter = App.Units.Quantity( f'({offset.y} - (1/sqrt(2))*{shortSize} * tan(radians(22.5)))/2 mm')
 
 verts = [
   App.Vector( -vertXshort,  vertY,      0 ),
@@ -272,8 +274,8 @@ zone_fill_sketch = body.newObject('Sketcher::SketchObject','ZoneFillSketch')
 zone_fill_sketch.Support = box_plane
 zone_fill_sketch.MapMode = 'FlatFace'
 
-vertX = App.Units.Quantity( f'{size.x}/2 mm' )
-vertY = App.Units.Quantity( f'{size.y}/2 mm' )
+vertX = App.Units.Quantity( f'{offset.x} mm' )
+vertY = App.Units.Quantity( f'{offset.y} mm' )
 
 verts = [
   App.Vector( -vertX,  vertY, 0 ),
