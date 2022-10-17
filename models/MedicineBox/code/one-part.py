@@ -48,13 +48,13 @@ Dimension = namedtuple( 'Dimension', 'x y z')
 ##############
 
 size = Dimension( 60, 50, 75 )
-count = Dimension( 6, 4, 1 )
-padding = 2 # this is dimensionless
+count = Dimension( 2, 3, 1 )
+padding = 3 # this is dimensionless
 
 base = Dimension._make( [c*s + (c + 1)*padding for s, c in zip( size, count ) ] )
 offset = Dimension._make( [s/2 for s in size] )
-globalOffset = Dimension._make( [(b-s-padding)/2 for s, b in zip(size, base)] )
-repeatLength = Dimension._make( [b-s for s, b in zip(size, base)] )
+globalOffset = Dimension._make( [(b-s-2*padding)/2 for s, b in zip(size, base)] )
+repeatLength = Dimension._make( [b-s-2*padding for s, b in zip(size, base)] )
 
 # setting up some standard vectors
 zero_vector = App.Vector( 0, 0, 0 )
@@ -97,20 +97,26 @@ def makeCopies( original, sketch, name ):
   transform.Originals = [original]
   transform.Shape = original.Shape
 
-  x_transform = body.newObject('PartDesign::LinearPattern', name+'X')
-  x_transform.Direction = ( sketch, ['H_Axis'] )
-  x_transform.Length = repeatLength.x
-  x_transform.Reversed = 1
-  x_transform.Occurrences = count.x
+  transformations = []
 
-  y_transform = body.newObject('PartDesign::LinearPattern', name+'Y')
-  y_transform.Direction = ( sketch, ['V_Axis'] )
-  y_transform.Length = repeatLength.y
-  y_transform.Reversed = 1
-  y_transform.Occurrences = count.y
+  if count.x > 1:
+    x_transform = body.newObject('PartDesign::LinearPattern', name+'X')
+    x_transform.Direction = ( sketch, ['H_Axis'] )
+    x_transform.Length = repeatLength.x
+    x_transform.Reversed = 1
+    x_transform.Occurrences = count.x
+    transformations.append(x_transform)
+
+  if count.y > 1:
+    y_transform = body.newObject('PartDesign::LinearPattern', name+'Y')
+    y_transform.Direction = ( sketch, ['V_Axis'] )
+    y_transform.Length = repeatLength.y
+    y_transform.Reversed = 1
+    y_transform.Occurrences = count.y
+    transformations.append(y_transform)
 
   # "install" the transformations
-  transform.Transformations = [x_transform, y_transform]
+  transform.Transformations = transformations
 
   transform.Visibility = True
 
