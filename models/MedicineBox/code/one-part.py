@@ -48,7 +48,7 @@ Dimension = namedtuple( 'Dimension', 'x y z')
 ##############
 
 size = Dimension( 60, 50, 75 )
-count = Dimension( 2, 3, 1 )
+count = Dimension( 3, 1, 1 )
 padding = 3 # this is dimensionless
 
 base = Dimension._make( [c*s + (c + 1)*padding for s, c in zip( size, count ) ] )
@@ -246,6 +246,9 @@ conList.append(Sketcher.Constraint('Equal', 2, 6))
 
 zone_sketch.addConstraint(conList)
 del verts, conList
+
+vertXinset = App.Units.Quantity( f'{size.x}/2 - 4 mm' )
+vertYinset = App.Units.Quantity( f'{size.y}/2 - 4 mm' )
 
 ### draw circles ###
 zone_sketch.addGeometry( Part.Circle( App.Vector( -vertXinset,  vertYinset, 0), App.Vector(0,0,1), 3 ), False)
