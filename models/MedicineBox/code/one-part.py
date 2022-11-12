@@ -48,8 +48,8 @@ Dimension = namedtuple( 'Dimension', 'x y z')
 ##############
 
 size = Dimension( 60, 50, 75 )
-count = Dimension( 3, 1, 1 )
-padding = 3 # this is dimensionless
+count = Dimension( 4, 1, 1 )
+padding = 1 # this is dimensionless
 
 base = Dimension._make( [c*s + (c + 1)*padding for s, c in zip( size, count ) ] )
 offset = Dimension._make( [s/2 for s in size] )
