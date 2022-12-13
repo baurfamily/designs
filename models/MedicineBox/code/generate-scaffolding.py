@@ -48,7 +48,7 @@ Dimension = namedtuple( 'Dimension', 'x y z')
 ##############
 
 size = Dimension( 60, 50, 75 )
-count = Dimension( 2, 1, 1 )
+count = Dimension( 2, 4, 1 )
 padding = 2 # this is dimensionless
 
 base = Dimension._make( [c*s + (c + 1)*padding for s, c in zip( size, count ) ] )
